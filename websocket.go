@@ -51,6 +51,6 @@ func (w *WSWorker) Run() {
 			w.s.OnMessage(connector, []byte(message))
 		}
 	})
-	fmt.Println("websocket服务器端启动:  ", w.s.addr)
-	log.Fatal(http.ListenAndServe(w.s.addr, nil))
+	fmt.Println("websocket服务器端启动:  ", w.s.ADDR)
+	log.Fatal(http.ListenAndServe(w.s.ADDR, nil))
 }

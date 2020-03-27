@@ -21,7 +21,7 @@ func (c *TCPConn) Write(b []byte) error {
 }
 
 func (w *TCPWorker) Run() {
-	addr, err := net.ResolveTCPAddr("tcp", w.s.addr)
+	addr, err := net.ResolveTCPAddr("tcp", w.s.ADDR)
 	w.s.OnError(err)
 	tcpListen, err := net.ListenTCP("tcp", addr)
 	w.s.OnError(err)

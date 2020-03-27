@@ -46,9 +46,7 @@ func (pr *Pr) RunAll() {
 	for i := 0; i < l; i++ {
 		go pr.workers[i].Run()
 	}
-	for {
-
-	}
+	select {}
 }
 
 func GetConn(id int64) IO {
@@ -70,7 +68,7 @@ func SendToClient(id int64, b []byte) bool {
 }
 
 func (pr *Pr) AddServer(server *Server) {
-	switch server.s_type {
+	switch server.S_TYPE {
 	case TCP:
 		worker := &TCPWorker{server}
 		pr.workers = append(pr.workers, worker)
@@ -95,9 +93,9 @@ type Connector struct {
 }
 
 type Server struct {
-	id        int64
-	s_type    socket_type
-	addr      string
+	ID        int64
+	S_TYPE    socket_type
+	ADDR      string
 	OnMessage func(conn *Connector, message []byte)
 	OnError   func(err error)
 	OnClose   func(conn *Connector)

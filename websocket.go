@@ -1,47 +1,60 @@
-package main
+package socketgo
 
 import (
-	"flag"
+	"fmt"
+	"github.com/gorilla/websocket"
 	"log"
 	"net/http"
-
-	"github.com/gorilla/websocket"
 )
 
-var addr = flag.String("addr", "127.0.0.1:18881", "http service address")
-
-var upgrader = websocket.Upgrader{
-	//取消跨域限制
-	CheckOrigin: func(r *http.Request) bool {
-		return true
-	},
-} // use default options
-
-func root(w http.ResponseWriter, r *http.Request) {
-	c, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		log.Print("upgrade:", err)
-		return
-	}
-	defer c.Close()
-	for {
-		mt, message, err := c.ReadMessage()
-		if err != nil {
-			log.Println("read:", err)
-			break
-		}
-		log.Printf("recv: %s", message)
-		err = c.WriteMessage(mt, message)
-		if err != nil {
-			log.Println("write:", err)
-			break
-		}
-	}
+type WSWorker struct {
+	s *Server
+}
+type WSConn struct {
+	mConn *websocket.Conn
 }
 
-func ws() {
-	flag.Parse()
-	log.SetFlags(0)
-	http.HandleFunc("/", root)
-	log.Fatal(http.ListenAndServe(*addr, nil))
+func (c *WSConn) Write(b []byte) error {
+	//con := getConn(id)
+	//if con == nil {
+	//	return fmt.Errorf("no id")
+	//}
+	err := c.mConn.WriteMessage(websocket.TextMessage, b)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (w *WSWorker) Run() {
+	upgrader := websocket.Upgrader{
+		//取消跨域限制
+		CheckOrigin: func(r *http.Request) bool {
+			return true
+		},
+	}
+	http.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
+		conn, err := upgrader.Upgrade(writer, request, nil)
+		if err != nil {
+			log.Print("upgrade:", err)
+			return
+		}
+		c := &WSConn{conn}
+		counter++
+		connector := &Connector{counter, c}
+		connectors = append(connectors, connector)
+		w.s.OnConnect(connector)
+		defer w.s.OnClose(connector)
+		defer conn.Close()
+		for {
+			_, message, err := conn.ReadMessage()
+			if err != nil {
+				w.s.OnError(err)
+				break
+			}
+			w.s.OnMessage(connector, []byte(message))
+		}
+	})
+	fmt.Println("websocket服务器端启动:  ", w.s.addr)
+	log.Fatal(http.ListenAndServe(w.s.addr, nil))
 }

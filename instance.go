@@ -1,11 +1,4 @@
-package main
-
-import (
-	"fmt"
-	"go/types"
-	"log"
-	"net"
-)
+package socketgo
 
 type socket_type uint8
 
@@ -15,69 +8,83 @@ const (
 	WEB_SOCKET socket_type = 2
 )
 
-type SocketProcess interface {
-	Listen(*Server) (*Conn, error)
-	OnStartError(error)
-	Read(net.Conn) (string, interface{}, error)
-	Write(net.Conn)
+type IO interface {
+	Write(b []byte) error
 }
 
-type ConnRW interface {
-	Read() ([]byte, error)
-	Write([]byte) error
+type Worker interface {
+	Run()
 }
 
 type Conn struct {
-	conn interface{}
 }
 
-func Process(s *Server) {
-	w := &Worker{s.sType, run}
+type Pr struct {
+	workers []Worker
+}
+
+func (pr *Pr) RunAll() {
+	pr.workers[0].Run()
+	l := len(pr.workers)
+	for i := 0; i < l; i++ {
+		go pr.workers[i].Run()
+	}
 	for {
-		conn, err := w.Listen(s.addr)
-		if err != nil {
-			log.Printf("ID: %d TYPE: %s: ERROR: %s", s.id, s.name, err)
-		}
-		client := &Client{id, conn}
-		clients = append(clients, client)
-		id = id + 1
-		fmt.Println("%s服务器端启动:  %s", s.name, s.addr)
-		defer s.OnClose(client)
-		defer conn.Close()
-		for {
-			message, err := conn.Read()
-			if err != nil {
-				s.OnError(client, err)
-			}
-			s.OnMessage(client, message)
-		}
+
 	}
 }
 
-type Worker struct {
-	sType socket_type
-	run   func()
+func getConn(id int64) IO {
+	for _, c := range connectors {
+		if c.id == id {
+			return c.conn
+		}
+	}
+	return nil
+}
+
+func sendToClient(id int64, b []byte) bool {
+	io := getConn(id)
+	if io != nil {
+		_ = io.Write(b)
+		return true
+	}
+	return false
+}
+
+func (pr *Pr) AddServer(server *Server) {
+	switch server.sType {
+	case TCP:
+		worker := &TCPWorker{server}
+		pr.workers = append(pr.workers, worker)
+		break
+	case WEB_SOCKET:
+		worker := &WSWorker{server}
+		pr.workers = append(pr.workers, worker)
+		break
+	default:
+
+	}
 }
 
 var (
-	id      int64 = 0
-	clients []*Client
-	servers []*Server
+	counter    int64 = 0
+	connectors []*Connector
 )
 
-type Client struct {
+type Connector struct {
 	id   int64
-	conn *Conn
+	conn IO
 }
 
 type Server struct {
 	id        int64
 	sType     socket_type
 	addr      string
-	OnMessage func(*Client, []byte)
-	OnError   func(error)
-	OnClose   func(*Client)
-	OnConnect func(*Client)
+	OnMessage func(conn *Connector, message []byte)
+	OnError   func(err error)
+	OnClose   func(conn *Connector)
+	OnConnect func(conn *Connector)
 	OnStart   func()
 	OnOpen    func()
 }

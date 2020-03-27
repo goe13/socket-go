@@ -27,3 +27,7 @@ docs/_build/
 
 # Rope project settings
 .ropeproject
+
+
+# test
+/test.go

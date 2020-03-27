@@ -15,10 +15,6 @@ type WSConn struct {
 }
 
 func (c *WSConn) Write(b []byte) error {
-	//con := getConn(id)
-	//if con == nil {
-	//	return fmt.Errorf("no id")
-	//}
 	err := c.mConn.WriteMessage(websocket.TextMessage, b)
 	if err != nil {
 		return err

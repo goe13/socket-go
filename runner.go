@@ -21,9 +21,26 @@ type Conn struct {
 
 type Pr struct {
 	workers []Worker
+	OnStart func()
+}
+
+func GetProcessor(servs ...*Server) *Pr {
+	pr := &Pr{workers: []Worker{}}
+	if pr.OnStart == nil {
+		pr.OnStart = func() {
+
+		}
+	}
+	for _, serv := range servs {
+		pr.AddServer(serv)
+	}
+	return pr
 }
 
 func (pr *Pr) RunAll() {
+	if pr.OnStart != nil {
+		pr.OnStart()
+	}
 	pr.workers[0].Run()
 	l := len(pr.workers)
 	for i := 0; i < l; i++ {
@@ -34,7 +51,7 @@ func (pr *Pr) RunAll() {
 	}
 }
 
-func getConn(id int64) IO {
+func GetConn(id int64) IO {
 	for _, c := range connectors {
 		if c.id == id {
 			return c.conn
@@ -43,8 +60,8 @@ func getConn(id int64) IO {
 	return nil
 }
 
-func sendToClient(id int64, b []byte) bool {
-	io := getConn(id)
+func SendToClient(id int64, b []byte) bool {
+	io := GetConn(id)
 	if io != nil {
 		_ = io.Write(b)
 		return true
@@ -53,7 +70,7 @@ func sendToClient(id int64, b []byte) bool {
 }
 
 func (pr *Pr) AddServer(server *Server) {
-	switch server.sType {
+	switch server.s_type {
 	case TCP:
 		worker := &TCPWorker{server}
 		pr.workers = append(pr.workers, worker)
@@ -79,7 +96,7 @@ type Connector struct {
 
 type Server struct {
 	id        int64
-	sType     socket_type
+	s_type    socket_type
 	addr      string
 	OnMessage func(conn *Connector, message []byte)
 	OnError   func(err error)

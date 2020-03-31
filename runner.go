@@ -68,6 +68,24 @@ func SendToClient(id int64, b []byte) bool {
 }
 
 func (pr *Pr) AddServer(server *Server) {
+	if server.OnClose == nil {
+		server.OnClose = func(conn *Connector) {}
+	}
+	if server.OnMessage == nil {
+		server.OnMessage = func(conn *Connector, message []byte) {}
+	}
+	if server.OnError == nil {
+		server.OnError = func(err error) {}
+	}
+	if server.OnOpen == nil {
+		server.OnOpen = func() {}
+	}
+	if server.OnConnect == nil {
+		server.OnConnect = func(conn *Connector) {}
+	}
+	if server.OnStart == nil {
+		server.OnStart = func() {}
+	}
 	switch server.S_TYPE {
 	case TCP:
 		worker := &TCPWorker{server}
